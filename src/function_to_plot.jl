@@ -61,7 +61,7 @@ function plot_data(
     overlay_plots=true, # true a single plot for all dataset false one plot per well
     do_blank_subtraction="NO", # string on how to use blank (NO,avg_subtraction,time_avg)
     avg_replicate=false, # if true the average between replicates
-    correct_negative="thr_correction", # if "thr_correction" it put a thr on the minimum value of the data with blank subracted, if "blank_correction" uses blank distrib to impute negative values
+    correct_negative="remove", # if "thr_correction" it put a thr on the minimum value of the data with blank subracted, if "blank_correction" uses blank distrib to impute negative values
     thr_negative=0.01 ,
     blank_value = 0.0,
     blank_array = [0.0],
@@ -222,9 +222,9 @@ function plot_fit_of_file(
         path_to_plot="NA", # path where to save Plots
         display_plots=true,# display plots in julia or not
         save_plots=false, # save the plot or not
-        do_blank_subtraction="avg_subtraction", # string on how to use blank (NO,avg_subtraction,time_avg)
+        do_blank_subtraction="avg_blank", # string on how to use blank (NO,avg_subtraction,time_avg)
         avg_replicate=false, # if true the average between replicates
-        correct_negative="thr_correction", # if "thr_correction" it put a thr on the minimum value of the data with blank subracted, if "blank_correction" uses blank distrib to impute negative values
+        correct_negative="remove", # if "thr_correction" it put a thr on the minimum value of the data with blank subracted, if "blank_correction" uses blank distrib to impute negative values
         thr_negative=0.01 ,
         blank_value = 0.0,
         blank_array = [0.0],
@@ -233,7 +233,8 @@ function plot_fit_of_file(
         y_size =300,
         guidefontsize=18,
         tickfontsize=16,
-        legendfontsize=10
+        legendfontsize=10,
+        integrator = Tsit5()
         )
       
 
@@ -338,16 +339,35 @@ function plot_fit_of_file(
 
           elseif Kimchi_method == "ODE"
             
-            plot_ode_fit(save_plots,if_display,data,results_specific_well)
+            plot_ode_fit(save_plots,
+            if_display,
+            data,
+            results_of_specific_well;
+            integrator=integrator, 
+            guidefontsize=guidefontsize,
+            tickfontsize=tickfontsize,
+            legendfontsize=legendfontsize,
+            y_size =y_size,
+            x_size =x_size,
+            )
 
           elseif Kimchi_method == "ODE_segmentation"
 
-            plot_ode_fit(save_plots,if_display,data,results_specific_well)
+            plot_NL_fit(save_plots,
+            if_display,
+            data,
+            results_of_specific_well,
+            guidefontsize=guidefontsize,
+            tickfontsize=tickfontsize,
+            legendfontsize=legendfontsize,
+            y_size =y_size,
+            x_size =x_size,
+            )
 
 
           elseif Kimchi_method == "segment_analysis"
 
-            plot_seg_fit(save_plots,if_display,data,results_specific_well)
+            plot_seg_fit(save_plots,if_display,data,results_of_specific_well)
 
 
             
@@ -355,18 +375,18 @@ function plot_fit_of_file(
 
          elseif Kimchi_method == "NL"
 
-            plot_NL_fit(save_plots,if_display,data,results_specific_well)
+            plot_NL_fit(save_plots,if_display,data,results_of_specific_well)
 
 
                 
          elseif Kimchi_method == "NL_model_selection"
 
-            plot_NL_fit(save_plots,if_display,data,results_specific_well)
+            plot_NL_fit(save_plots,if_display,data,results_of_specific_well)
 
 
          elseif Kimchi_method == "NL_segmentation"
 
-            plot_NL_fit(save_plots,if_display,data,results_specific_well)
+            plot_NL_fit(save_plots,if_display,data,results_of_specific_well)
 
 
 
@@ -428,7 +448,7 @@ function plot_log_lin(save_plots,
             log.(data[2, :]),
             xlabel="Time",
             ylabel="Log(Arb. Units)",
-            label=["Data " nothing],
+            label=["Log Data " nothing],
             markersize=1,
             color=:black,
             title=string(label_exp, " ", name_well),
@@ -470,6 +490,57 @@ function plot_log_lin(save_plots,
     )
     if save_plots
         png(string(path_to_plot, label_exp, "_Log_Lin_Fit_", name_well, ".png"))
+    end
+    N0 = exp.(coeff_1)
+    Theoretical_fitting_exp = N0.* exp.(data_to_fit_times .* coeff_2)
+
+    if_display(
+        Plots.scatter(
+            data[1, :],
+            (data[2, :]),
+            xlabel="Time",
+            ylabel="Arb. Units",
+            label=["Data " nothing],
+            markersize=1,
+            color=:black,
+            title=string(label_exp, " ", name_well),
+            guidefontsize=guidefontsize,
+            tickfontsize=tickfontsize,
+            legendfontsize=legendfontsize,
+            size=(y_size,x_size),
+
+        ),
+    )
+
+    if_display(
+        Plots.plot!(
+            data_to_fit_times,
+            Theoretical_fitting_exp,
+            xlabel="Time ",
+            ylabel="Arb. Units",
+            label=[string("Fitting Exp. ") nothing],
+            c=:red,
+            guidefontsize=guidefontsize,
+            tickfontsize=tickfontsize,
+            legendfontsize=legendfontsize,
+            size=(y_size,x_size),
+
+        ),
+    )
+    if_display(
+        Plots.vline!(
+            [data_to_fit_times[1], data_to_fit_times[end]],
+            c=:black,
+            label=[string("Window of exp. phase ") nothing],
+            guidefontsize=guidefontsize,
+            tickfontsize=tickfontsize,
+            legendfontsize=legendfontsize,
+            size=(y_size,x_size),
+
+        ),
+    )
+    if save_plots
+        png(string(path_to_plot, label_exp, "_exp_Fit_", name_well, ".png"))
     end
 
     specific_gr = Kimchi.specific_gr_evaluation(data, pt_smoothing_derivative)
@@ -520,7 +591,8 @@ function plot_ode_fit(save_plots,
     y_size = 300,
     x_size = 300,
     pt_avg = 3,
-    smoothing =false
+    smoothing =false,
+    integrator = Tsit5()
     )
     name_well =   results_specific_well[2]
     label_exp =   results_specific_well[1]
@@ -530,11 +602,11 @@ function plot_ode_fit(save_plots,
     tsteps = data[1, :]
 
     model_string = results_specific_well[3]
-    param_array =results_specific_well[3: (end - 4)]
+    param_array =results_specific_well[3: (end -3)]
     u0 = generating_IC(data, model, smoothing, pt_avg)
     ODE_prob = model_selector(model, u0, tspan)
 
-    remade_solution = solve(remake(ODE_prob, p=res.u), integrator, saveat=tsteps)
+    remade_solution = solve(remake(ODE_prob, p=param_array), integrator, saveat=tsteps)
     sol_time = reduce(hcat, remade_solution.t)
     sol_fin = reduce(hcat, remade_solution.u)
     sol_fin = sum(sol_fin, dims=1)
@@ -562,7 +634,7 @@ function plot_ode_fit(save_plots,
             sol_fin[1, 1:end],
             xlabel="Time",
             ylabel="Arb. Units",
-            label=[string("Fitting ", model) nothing],
+            label=[string("Fitting ", model_string) nothing],
             c=:red,
             guidefontsize=guidefontsize,
             tickfontsize=tickfontsize,
@@ -570,119 +642,87 @@ function plot_ode_fit(save_plots,
             size=(y_size,x_size),
         ),
     )
-    if save_plot
+    if save_plots
         png(string(path_to_plot, label_exp, "_", model, "_", name_well, ".png"))
     end
 
     
 end
-
-function plot_NL_fit(save_plots,if_display,data,results_specific_well)
-
-    name_well =   results_specific_well[2]
-    label_exp =   results_specific_well[1]
-    
-end
-
-function plot_seg_fit(save_plots,if_display,   data,results_specific_well)
-
-    name_well =   results_specific_well[2]
-    label_exp =   results_specific_well[1]
-    
-end
-
-
-function plot_seg_fit(save_plots,if_display,   data,results_specific_well)
-
-    name_well =   results_specific_well[2]
-    label_exp =   results_specific_well[1]
-    
-end
-
-
-
-path_to_data = "/Users/fabrizio.angaroni/Documents/JMAKi_utilities/real_dataset_tests/dataset/Monod_AA_detection/exp_s7/channel_1.csv"
-path_to_annotation ="/Users/fabrizio.angaroni/Documents/JMAKi_utilities/real_dataset_tests/dataset/Monod_AA_detection/exp_s7/annotation.csv"
-
-
-
-plot_data(
-    "testing_plots", #label of the experiment
-    path_to_data; # path to the folder to analyze
-    path_to_annotation = path_to_annotation,# path to the annotation of the wells
-    display_plots=true,# display plots in julia or not
-    save_plots=false, # save the plot or not
-    overlay_plots=true, # true a single plot for all dataset false one plot per well
-    avg_replicate=false, # if true the average between replicates
-    x_size=300,
-    do_blank_subtraction="avg_subtraction", # string on how to use blank (NO,avg_subtraction,time_avg)
-    y_size =500,
+function plot_NL_fit(save_plots,
+    if_display,
+    data,
+    results_specific_well;
     guidefontsize=18,
-    tickfontsize=16,
-    legendfontsize=10
-    )
-
-fit_log_lin = fit_one_file_Log_Lin(
-    " ", #label of the experiment
-    path_to_data; # path to the folder to analyze
-    path_to_annotation=path_to_annotation,# path to the annotation of the wells
-    avg_replicate=false, # if true the average between replicates is fitted. If false all replicate are fitted indipendelitly
-    do_blank_subtraction="avg_subtraction", # string on how to use blank (NO,avg_subtraction,time_avg)
-
-    )
-
-
-plot_fit_of_file(
-    fit_log_lin,
-    path_to_data; # path to the folder to analyze
-    path_to_annotation = path_to_annotation,# path to the annotation of the wells
-    path_to_plot="NA", # path where to save Plots
-    do_blank_subtraction="avg_subtraction", # string on how to use blank (NO,avg_subtraction,time_avg)
-    display_plots=true,# display plots in julia or not
-    save_plots=false, # save the plot or not
-    x_size=400,
-    y_size =700,
-    guidefontsize=18,
-    tickfontsize=16,
+    tickfontsize=12,
     legendfontsize=10,
-    pt_smoothing_derivative = 7 ,
-)
-  
-
-
-
-model = "baranyi_richards"
- 
-lb_param = [0.001,0.1,0.0,0.01]
- ub_param =[0.1,5.0 ,1000.0,5.01]
-param_guess =[0.01,1.0 ,500.0,1.01]
-    
-fit_od = fit_file_ODE(
-        "test", #label of the experiment
-        path_to_data, # path to the folder to analyze
-        model, # string of the used model
-        param_guess;
-        path_to_annotation=path_to_annotation,# path to the annotation of the wells
-        integrator=Tsit5(), # selection of sciml integrator
-        lb = lb_param,
-        ub =ub_param
+    y_size = 300,
+    x_size = 300,
+    pt_avg = 3,
+    smoothing =false,
     )
-    
+    name_well =   results_specific_well[2]
+    label_exp =   results_specific_well[1]
+    max_t = data[1, end]
+    min_t = data[1, 1]
+    tspan = (min_t, max_t)
+    tsteps = data[1, :]
+
+    model_string = results_specific_well[3]
+    param_array =results_specific_well[3: (end -3)]
+    model_function = NL_models[model_string].func
+
+    fitted_model = model_function(param_array, data[1, :])
 
 
-    plot_fit_of_file(
-        fit_log_lin,
-        path_to_data; # path to the folder to analyze
-        path_to_annotation = path_to_annotation,# path to the annotation of the wells
-        path_to_plot="NA", # path where to save Plots
-        do_blank_subtraction="avg_subtraction", # string on how to use blank (NO,avg_subtraction,time_avg)
-        display_plots=true,# display plots in julia or not
-        save_plots=false, # save the plot or not
-        x_size=400,
-        y_size =700,
-        guidefontsize=18,
-        tickfontsize=16,
-        legendfontsize=10,
-        pt_smoothing_derivative = 7 ,
+    if_display(
+        Plots.scatter(
+            data[1, :],
+            data[2, :],
+            xlabel="Time",
+            ylabel="Arb. Units",
+            label=["Data " nothing],
+            markersize=2,
+            color=:black,
+            title=string(label_exp, " ", name_well),
+            guidefontsize=guidefontsize,
+            tickfontsize=tickfontsize,
+            legendfontsize=legendfontsize,
+            size=(y_size,x_size),
+        ),
     )
-      
+    if_display(
+        Plots.plot!(
+            data[1, :],
+            fitted_model,
+            xlabel="Time",
+            ylabel="Arb. Units",
+            label=[string("Fitting ", model_string) nothing],
+            c=:red,
+            guidefontsize=guidefontsize,
+            tickfontsize=tickfontsize,
+            legendfontsize=legendfontsize,
+            size=(y_size,x_size),
+        ),
+    )
+    if save_plots
+        png(string(path_to_plot, label_exp, "_", model, "_", name_well, ".png"))
+    end
+
+    
+end
+function plot_seg_fit(save_plots,if_display,   data,results_specific_well)
+
+    name_well =   results_specific_well[2]
+    label_exp =   results_specific_well[1]
+    
+end
+
+
+function plot_seg_fit(save_plots,if_display,   data,results_specific_well)
+
+    name_well =   results_specific_well[2]
+    label_exp =   results_specific_well[1]
+    
+end
+
+
