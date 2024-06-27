@@ -330,6 +330,7 @@ function plot_fit_of_file(
             if_display,
             data,
             results_of_specific_well;
+            path_to_plot = path_to_plot,
             guidefontsize=guidefontsize,
             tickfontsize=tickfontsize,
             legendfontsize=legendfontsize,
@@ -343,6 +344,7 @@ function plot_fit_of_file(
             if_display,
             data,
             results_of_specific_well;
+            path_to_plot = path_to_plot,
             integrator=integrator, 
             guidefontsize=guidefontsize,
             tickfontsize=tickfontsize,
@@ -356,7 +358,8 @@ function plot_fit_of_file(
             plot_NL_fit(save_plots,
             if_display,
             data,
-            results_of_specific_well,
+            results_of_specific_well;
+            path_to_plot = path_to_plot,
             guidefontsize=guidefontsize,
             tickfontsize=tickfontsize,
             legendfontsize=legendfontsize,
@@ -375,13 +378,32 @@ function plot_fit_of_file(
 
          elseif Kimchi_method == "NL"
 
-            plot_NL_fit(save_plots,if_display,data,results_of_specific_well)
+            plot_NL_fit(save_plots,
+            if_display,
+            data,
+            results_of_specific_well;
+            path_to_plot = path_to_plot,
+            guidefontsize=guidefontsize,
+            tickfontsize=tickfontsize,
+            legendfontsize=legendfontsize,
+            y_size =y_size,
+            x_size =x_size,
+            )
 
 
                 
          elseif Kimchi_method == "NL_model_selection"
-
-            plot_NL_fit(save_plots,if_display,data,results_of_specific_well)
+            plot_NL_fit(save_plots,
+            if_display,
+            data,
+            results_of_specific_well;
+            path_to_plot = path_to_plot,
+            guidefontsize=guidefontsize,
+            tickfontsize=tickfontsize,
+            legendfontsize=legendfontsize,
+            y_size =y_size,
+            x_size =x_size,
+            )
 
 
          elseif Kimchi_method == "NL_segmentation"
@@ -406,6 +428,7 @@ function plot_log_lin(save_plots,
     if_display,
     data,
     results_specific_well;
+    path_to_plot = "NA",
     guidefontsize=18,
     tickfontsize=12,
     legendfontsize=10,
@@ -585,6 +608,7 @@ function plot_ode_fit(save_plots,
     if_display,
     data,
     results_specific_well;
+    path_to_plot = "NA",
     guidefontsize=18,
     tickfontsize=12,
     legendfontsize=10,
@@ -602,7 +626,7 @@ function plot_ode_fit(save_plots,
     tsteps = data[1, :]
 
     model_string = results_specific_well[3]
-    param_array =results_specific_well[3: (end -3)]
+    param_array =results_specific_well[4: (end -3)]
     u0 = generating_IC(data, model, smoothing, pt_avg)
     ODE_prob = model_selector(model, u0, tspan)
 
@@ -643,7 +667,7 @@ function plot_ode_fit(save_plots,
         ),
     )
     if save_plots
-        png(string(path_to_plot, label_exp, "_", model, "_", name_well, ".png"))
+        png(string(path_to_plot, label_exp, "_", model_string, "_", name_well, ".png"))
     end
 
     
@@ -652,13 +676,13 @@ function plot_NL_fit(save_plots,
     if_display,
     data,
     results_specific_well;
+    path_to_plot="NA", # path where to save Plots
     guidefontsize=18,
     tickfontsize=12,
     legendfontsize=10,
     y_size = 300,
     x_size = 300,
     pt_avg = 3,
-    smoothing =false,
     )
     name_well =   results_specific_well[2]
     label_exp =   results_specific_well[1]
@@ -668,8 +692,8 @@ function plot_NL_fit(save_plots,
     tsteps = data[1, :]
 
     model_string = results_specific_well[3]
-    param_array =results_specific_well[3: (end -3)]
-    model_function = NL_models[model_string].func
+    param_array =results_specific_well[4: (end -3)]
+    model_function = Kimchi.NL_models[model_string].func
 
     fitted_model = model_function(param_array, data[1, :])
 
@@ -705,7 +729,7 @@ function plot_NL_fit(save_plots,
         ),
     )
     if save_plots
-        png(string(path_to_plot, label_exp, "_", model, "_", name_well, ".png"))
+        png(string(path_to_plot, label_exp, "_", model_string, "_", name_well, ".png"))
     end
 
     
