@@ -118,7 +118,7 @@ function plot_data(
     end
 
     for well_name in names_of_cols[2:end]
-        name_well = string(well_name)
+        well_name = string(well_name)
 
         if avg_replicate == true
             data_values = copy(dfs_data[!, well_name])
@@ -153,7 +153,7 @@ function plot_data(
                         xlabel="Time",
                         ylabel="Arb. Units",
                         size=(y_size,x_size),
-                        label=[name_well],
+                        label=[well_name],
                         title=string(label_exp),
                         legend=:outertopright,
                         guidefontsize=guidefontsize,
@@ -168,7 +168,7 @@ function plot_data(
                         data[2, :],
                         xlabel="Time",
                         ylabel="Arb. Units",
-                        label=[name_well],
+                        label=[well_name],
                         size=(y_size,x_size),
                         title=string(label_exp),
                         legend=:outertopright,
@@ -192,7 +192,7 @@ function plot_data(
                     ylabel="Arb. Units",
                     label=["Data " nothing],
                     color=:black,
-                    title=string(label_exp, " ", name_well),
+                    title=string(label_exp, " ", well_name),
                     guidefontsize=guidefontsize,
                     tickfontsize=tickfontsize,
                     legendfontsize=legendfontsize,
@@ -201,7 +201,7 @@ function plot_data(
                 ),
             )
             if save_plots
-                png(string(path_to_plot, label_exp, "_", name_well, ".png"))
+                png(string(path_to_plot, label_exp, "_", well_name, ".png"))
             end
         end
 
@@ -216,211 +216,170 @@ end
 
 
 function plot_fit_of_file(
-        Kimchi_results::Any,
-        path_to_data::String; # path to the folder to analyze
-        path_to_annotation::Any = missing,# path to the annotation of the wells
+        Kimchi_results::Any;
         path_to_plot="NA", # path where to save Plots
         display_plots=true,# display plots in julia or not
         save_plots=false, # save the plot or not
-        do_blank_subtraction="avg_blank", # string on how to use blank (NO,avg_subtraction,time_avg)
-        avg_replicate=false, # if true the average between replicates
-        correct_negative="remove", # if "thr_correction" it put a thr on the minimum value of the data with blank subracted, if "blank_correction" uses blank distrib to impute negative values
-        thr_negative=0.01 ,
-        blank_value = 0.0,
-        blank_array = [0.0],
-        pt_smoothing_derivative = 7,
-        x_size=300,
+        x_size=400,
         y_size =300,
         guidefontsize=18,
         tickfontsize=16,
         legendfontsize=10,
-        integrator = Tsit5()
         )
       
+    # plotting standard fits
+    if length(Kimchi_results) == 4
+        Kimchi_results_matrix = Kimchi_results[2]
+        Kimchi_fits = Kimchi_results[3]
+        Kimchi_data = Kimchi_results[4]
 
+
+
+        if display_plots
+            if_display = display
+        else
+            if_display = identity
+        end
+
+      for i in eachindex(Kimchi_fits)
+          fit_temp =Kimchi_fits[i]
+          data_temp =Kimchi_data[i]
+          y_data_temp =data_temp[2,:]
+          x_data_temp =data_temp[1,:]
+          model_string = Kimchi_results_matrix[3,i+1]
+          well_name = Kimchi_results_matrix[2,i+1]
+          label_exp = Kimchi_results_matrix[1,i+1]
+
+          if_display(
+            Plots.scatter(
+                x_data_temp,
+                y_data_temp,
+                xlabel="Time",
+                ylabel="Arb. Units",
+                label=["Data " nothing],
+                markersize=2,
+                color=:black,
+                title=string(label_exp, " ", well_name),
+                guidefontsize=guidefontsize,
+                tickfontsize=tickfontsize,
+                legendfontsize=legendfontsize,
+                size=(y_size,x_size),
+            ),
+            )
+            if_display(
+                Plots.plot!(
+                    x_data_temp,
+                    fit_temp,
+                    xlabel="Time",
+                    ylabel="Arb. Units",
+                    label=[string("Fitting ", model_string) nothing],
+                    c=:red,
+                    guidefontsize=guidefontsize,
+                    tickfontsize=tickfontsize,
+                    legendfontsize=legendfontsize,
+                    size=(y_size,x_size),
+                ),
+            )
+            if save_plots
+                png(string(path_to_plot, label_exp, "_", model_string, "_", well_name, ".png"))
+            end
+
+
+
+        end
+   
+
+        
+        
+
+
+    else    # plotting segmentation fits
 
         Kimchi_results_matrix = Kimchi_results[2]
-        Kimchi_method = Kimchi_results[1]
+        Kimchi_fits = Kimchi_results[3]
+        Kimchi_data = Kimchi_results[4]
+        Kimchi_cp_intervals = Kimchi_results[5]
 
 
 
-        names_of_annotated_df,properties_of_annotation,list_of_blank, list_of_discarded = reading_annotation(path_to_annotation)
-        # reading files
-        dfs_data = CSV.File(path_to_data)
-    
-        # shaping df for the inference
-        names_of_cols = propertynames(dfs_data)
-    
-        # excluding blank data and discarded wells
-        if length(list_of_blank) > 0
-            names_of_cols = filter!(e -> !(e in list_of_blank), names_of_cols)
+        if display_plots
+            if_display = display
+        else
+            if_display = identity
         end
-    
-        if length(list_of_discarded) > 0
-            names_of_cols = filter!(e -> !(e in list_of_discarded), names_of_cols)
-        end
-    
-        times_data = dfs_data[names_of_cols[1]]
 
-        if length(list_of_blank) > 0
-            blank_array = reduce(vcat, [(dfs_data[k]) for k in list_of_blank])
-            blank_array = convert(Vector{Float64}, blank_array)
-    
-            blank_value = blank_subtraction(
-                dfs_data,
-                list_of_blank;
-                method=do_blank_subtraction
+      for i in eachindex(Kimchi_fits)
+          fit_temp =Kimchi_fits[i]
+          data_temp =Kimchi_data[i]
+          temp_cp = Kimchi_cp_intervals[i]
+          y_fit_temp =fit_temp[:,2]
+          x_fit_temp =fit_temp[:,1]
+          y_data_temp =data_temp[2,:]
+          x_data_temp =data_temp[1,:]
+          model_string = Kimchi_results_matrix[3,i+1]
+          well_name = Kimchi_results_matrix[2,i+1]
+          label_exp = Kimchi_results_matrix[1,i+1]
+
+          if_display(
+            Plots.scatter(
+                x_data_temp,
+                y_data_temp,
+                xlabel="Time",
+                ylabel="Arb. Units",
+                label=["Data " nothing],
+                markersize=2,
+                color=:black,
+                title=string(label_exp, " ", well_name),
+                guidefontsize=guidefontsize,
+                tickfontsize=tickfontsize,
+                legendfontsize=legendfontsize,
+                size=(y_size,x_size),
+            ),
             )
-    
-        end
-    
-    
-        ## considering replicates
-        list_replicate = unique(properties_of_annotation)
-        list_replicate = filter!(e -> e != "b", list_replicate)
-    
-        if avg_replicate == true
-    
-            dfs_data, names_of_cols = average_replicate(dfs_data, times_data, properties_of_annotation, names_of_annotated_df)
-    
-    
-        end
-        # creating the folder of data if one wants to save
-        if save_plots == true
-            mkpath(path_to_plot)
-        end
-    
-        for well_name in names_of_cols[2:end]
-            name_well = string(well_name)
+            println(temp_cp)
+   
+            if_display(
+                Plots.plot!(
+                    x_fit_temp,
+                    y_fit_temp,
+                    xlabel="Time",
+                    ylabel="Arb. Units",
+                    label=[string("Fitting ", model_string) nothing],
+                    c=:red,
+                    guidefontsize=guidefontsize,
+                    tickfontsize=tickfontsize,
+                    legendfontsize=legendfontsize,
+                    size=(y_size,x_size),
+                ),
+            )
 
 
-            if avg_replicate == true
-                data_values = copy(dfs_data[!, well_name])
-            else
-                data_values = copy(dfs_data[well_name])
+            if_display( Plots.vline!(
+                [temp_cp],
+                c=:black,
+                label=[string("Change point") nothing],
+                guidefontsize=guidefontsize,
+                tickfontsize=tickfontsize,
+                legendfontsize=legendfontsize,
+                size=(y_size,x_size),
+                ) )
+            if save_plots
+                png(string(path_to_plot, label_exp, "_", model_string, "_", well_name, ".png"))
             end
-    
-            # blank subtraction
-            data_values = data_values .- blank_value
-
-            index_missing = findall(ismissing, data_values)
-            index_tot =  eachindex(data_values)
-            index_tot =  setdiff(index_tot,index_missing)
-            data = Matrix(transpose(hcat(times_data[index_tot], data_values[index_tot])))
-            # correcting negative values after blank subtraction
-            data = negative_value_correction(data,
-                blank_array;
-                method=correct_negative,
-                thr_negative=thr_negative,)
-    
-            if display_plots
-                if_display = display
-            else
-                if_display = identity
-            end
-    
-          index_of_well = findfirst(Kimchi_results_matrix[2,:] .== string(well_name) )
-
-           # plotting fit 
-          results_of_specific_well = Kimchi_results_matrix[:,index_of_well]
-
-          if Kimchi_method == "Log-Lin"
-
-            plot_log_lin(save_plots,
-            if_display,
-            data,
-            results_of_specific_well;
-            path_to_plot = path_to_plot,
-            guidefontsize=guidefontsize,
-            tickfontsize=tickfontsize,
-            legendfontsize=legendfontsize,
-            y_size =y_size,
-            x_size =x_size,
-            pt_smoothing_derivative = pt_smoothing_derivative )
-
-          elseif Kimchi_method == "ODE"
-            
-            plot_ode_fit(save_plots,
-            if_display,
-            data,
-            results_of_specific_well;
-            path_to_plot = path_to_plot,
-            integrator=integrator, 
-            guidefontsize=guidefontsize,
-            tickfontsize=tickfontsize,
-            legendfontsize=legendfontsize,
-            y_size =y_size,
-            x_size =x_size,
-            )
-
-          elseif Kimchi_method == "ODE_segmentation"
-
-            plot_NL_fit(save_plots,
-            if_display,
-            data,
-            results_of_specific_well;
-            path_to_plot = path_to_plot,
-            guidefontsize=guidefontsize,
-            tickfontsize=tickfontsize,
-            legendfontsize=legendfontsize,
-            y_size =y_size,
-            x_size =x_size,
-            )
-
-
-          elseif Kimchi_method == "segment_analysis"
-
-            plot_seg_fit(save_plots,if_display,data,results_of_specific_well)
-
-
-            
-
-
-         elseif Kimchi_method == "NL"
-
-            plot_NL_fit(save_plots,
-            if_display,
-            data,
-            results_of_specific_well;
-            path_to_plot = path_to_plot,
-            guidefontsize=guidefontsize,
-            tickfontsize=tickfontsize,
-            legendfontsize=legendfontsize,
-            y_size =y_size,
-            x_size =x_size,
-            )
-
-
-                
-         elseif Kimchi_method == "NL_model_selection"
-            plot_NL_fit(save_plots,
-            if_display,
-            data,
-            results_of_specific_well;
-            path_to_plot = path_to_plot,
-            guidefontsize=guidefontsize,
-            tickfontsize=tickfontsize,
-            legendfontsize=legendfontsize,
-            y_size =y_size,
-            x_size =x_size,
-            )
-
-
-         elseif Kimchi_method == "NL_segmentation"
-
-            plot_NL_fit(save_plots,if_display,data,results_of_specific_well)
 
 
 
-         end   
-
-
-
-
-
-
-    
         end
+   
+
+        
+        
+
+    end
+
+
+    
+      
 end    
 
 
@@ -437,7 +396,7 @@ function plot_log_lin(save_plots,
     pt_smoothing_derivative = 7
     )
 
-    name_well =   results_specific_well[2]
+    well_name =   results_specific_well[2]
     label_exp =   results_specific_well[1]
 
 
@@ -474,7 +433,7 @@ function plot_log_lin(save_plots,
             label=["Log Data " nothing],
             markersize=1,
             color=:black,
-            title=string(label_exp, " ", name_well),
+            title=string(label_exp, " ", well_name),
             guidefontsize=guidefontsize,
             tickfontsize=tickfontsize,
             legendfontsize=legendfontsize,
@@ -512,7 +471,7 @@ function plot_log_lin(save_plots,
         ),
     )
     if save_plots
-        png(string(path_to_plot, label_exp, "_Log_Lin_Fit_", name_well, ".png"))
+        png(string(path_to_plot, label_exp, "_Log_Lin_Fit_", well_name, ".png"))
     end
     N0 = exp.(coeff_1)
     Theoretical_fitting_exp = N0.* exp.(data_to_fit_times .* coeff_2)
@@ -526,7 +485,7 @@ function plot_log_lin(save_plots,
             label=["Data " nothing],
             markersize=1,
             color=:black,
-            title=string(label_exp, " ", name_well),
+            title=string(label_exp, " ", well_name),
             guidefontsize=guidefontsize,
             tickfontsize=tickfontsize,
             legendfontsize=legendfontsize,
@@ -563,7 +522,7 @@ function plot_log_lin(save_plots,
         ),
     )
     if save_plots
-        png(string(path_to_plot, label_exp, "_exp_Fit_", name_well, ".png"))
+        png(string(path_to_plot, label_exp, "_exp_Fit_", well_name, ".png"))
     end
 
     specific_gr = Kimchi.specific_gr_evaluation(data, pt_smoothing_derivative)
@@ -599,154 +558,7 @@ function plot_log_lin(save_plots,
         size=(y_size,x_size),
     ) )
     if save_plots
-        png(string(path_to_plot, label_exp, "_specific_gr_dynamics_", name_well, ".png"))
+        png(string(path_to_plot, label_exp, "_specific_gr_dynamics_", well_name, ".png"))
     end
 
 end
-
-function plot_ode_fit(save_plots,
-    if_display,
-    data,
-    results_specific_well;
-    path_to_plot = "NA",
-    guidefontsize=18,
-    tickfontsize=12,
-    legendfontsize=10,
-    y_size = 300,
-    x_size = 300,
-    pt_avg = 3,
-    smoothing =false,
-    integrator = Tsit5()
-    )
-    name_well =   results_specific_well[2]
-    label_exp =   results_specific_well[1]
-    max_t = data[1, end]
-    min_t = data[1, 1]
-    tspan = (min_t, max_t)
-    tsteps = data[1, :]
-
-    model_string = results_specific_well[3]
-    param_array =results_specific_well[4: (end -3)]
-    u0 = generating_IC(data, model, smoothing, pt_avg)
-    ODE_prob = model_selector(model, u0, tspan)
-
-    remade_solution = solve(remake(ODE_prob, p=param_array), integrator, saveat=tsteps)
-    sol_time = reduce(hcat, remade_solution.t)
-    sol_fin = reduce(hcat, remade_solution.u)
-    sol_fin = sum(sol_fin, dims=1)
-
-
-    if_display(
-        Plots.scatter(
-            data[1, :],
-            data[2, :],
-            xlabel="Time",
-            ylabel="Arb. Units",
-            label=["Data " nothing],
-            markersize=2,
-            color=:black,
-            title=string(label_exp, " ", name_well),
-            guidefontsize=guidefontsize,
-            tickfontsize=tickfontsize,
-            legendfontsize=legendfontsize,
-            size=(y_size,x_size),
-        ),
-    )
-    if_display(
-        Plots.plot!(
-            remade_solution.t,
-            sol_fin[1, 1:end],
-            xlabel="Time",
-            ylabel="Arb. Units",
-            label=[string("Fitting ", model_string) nothing],
-            c=:red,
-            guidefontsize=guidefontsize,
-            tickfontsize=tickfontsize,
-            legendfontsize=legendfontsize,
-            size=(y_size,x_size),
-        ),
-    )
-    if save_plots
-        png(string(path_to_plot, label_exp, "_", model_string, "_", name_well, ".png"))
-    end
-
-    
-end
-function plot_NL_fit(save_plots,
-    if_display,
-    data,
-    results_specific_well;
-    path_to_plot="NA", # path where to save Plots
-    guidefontsize=18,
-    tickfontsize=12,
-    legendfontsize=10,
-    y_size = 300,
-    x_size = 300,
-    pt_avg = 3,
-    )
-    name_well =   results_specific_well[2]
-    label_exp =   results_specific_well[1]
-    max_t = data[1, end]
-    min_t = data[1, 1]
-    tspan = (min_t, max_t)
-    tsteps = data[1, :]
-
-    model_string = results_specific_well[3]
-    param_array =results_specific_well[4: (end -3)]
-    model_function = Kimchi.NL_models[model_string].func
-
-    fitted_model = model_function(param_array, data[1, :])
-
-
-    if_display(
-        Plots.scatter(
-            data[1, :],
-            data[2, :],
-            xlabel="Time",
-            ylabel="Arb. Units",
-            label=["Data " nothing],
-            markersize=2,
-            color=:black,
-            title=string(label_exp, " ", name_well),
-            guidefontsize=guidefontsize,
-            tickfontsize=tickfontsize,
-            legendfontsize=legendfontsize,
-            size=(y_size,x_size),
-        ),
-    )
-    if_display(
-        Plots.plot!(
-            data[1, :],
-            fitted_model,
-            xlabel="Time",
-            ylabel="Arb. Units",
-            label=[string("Fitting ", model_string) nothing],
-            c=:red,
-            guidefontsize=guidefontsize,
-            tickfontsize=tickfontsize,
-            legendfontsize=legendfontsize,
-            size=(y_size,x_size),
-        ),
-    )
-    if save_plots
-        png(string(path_to_plot, label_exp, "_", model_string, "_", name_well, ".png"))
-    end
-
-    
-end
-function plot_seg_fit(save_plots,if_display,   data,results_specific_well)
-
-    name_well =   results_specific_well[2]
-    label_exp =   results_specific_well[1]
-    
-end
-
-
-function plot_seg_fit(save_plots,if_display,   data,results_specific_well)
-
-    name_well =   results_specific_well[2]
-    label_exp =   results_specific_well[1]
-    
-end
-
-
