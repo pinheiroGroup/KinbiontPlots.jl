@@ -14,9 +14,9 @@ fit_log_lin = fit_one_file_Log_Lin(
     " ", #label of the experiment
     path_to_data; # path to the folder to analyze
     path_to_annotation=path_to_annotation,# path to the annotation of the wells
-    avg_replicate=true, # if true the average between replicates is fitted. If false all replicate are fitted indipendelitly
-  )
+)
 
+plot_fit_of_file(fit_log_lin)
 # fitting ODE
 model = "baranyi_richards"
 
