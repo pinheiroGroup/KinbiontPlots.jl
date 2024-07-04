@@ -65,8 +65,8 @@ function plot_data(
     thr_negative=0.01 ,
     blank_value = 0.0,
     blank_array = [0.0],
-    x_size=300,
-    y_size =300,
+    x_size=400,
+    y_size =750,
     guidefontsize=18,
     tickfontsize=16,
     legendfontsize=10
@@ -220,8 +220,9 @@ function plot_fit_of_file(
         path_to_plot="NA", # path where to save Plots
         display_plots=true,# display plots in julia or not
         save_plots=false, # save the plot or not
-        x_size=400,
-        y_size =300,
+        x_size=500,
+        pt_smoothing_derivative = 7,
+        y_size =750,
         guidefontsize=18,
         tickfontsize=16,
         legendfontsize=10,
@@ -290,7 +291,182 @@ function plot_fit_of_file(
    
 
         
-        
+    elseif  Kimchi_results[1] == "Log-Lin" 
+
+        Kimchi_results_matrix = Kimchi_results[2]
+        Kimchi_fits = Kimchi_results[3]
+        Kimchi_data = Kimchi_results[4]
+        Kimchi_confidence_intervals = Kimchi_results[5]
+
+        if display_plots
+            if_display = display
+        else
+            if_display = identity
+        end
+
+      for i in eachindex(Kimchi_fits)
+          fit_temp =Kimchi_fits[i]
+          data_temp =Kimchi_data[i]
+          temp_ci = Kimchi_confidence_intervals[i]
+          y_fit_temp =fit_temp[:,2]
+          x_fit_temp =fit_temp[:,1]
+          y_data_temp =data_temp[2,:]
+          x_data_temp =data_temp[1,:]
+          well_name = Kimchi_results_matrix[2,i+1]
+          label_exp = Kimchi_results_matrix[1,i+1]
+          coeff_1 = Kimchi_results_matrix[12,i+1]
+          coeff_2 =Kimchi_results_matrix[7,i+1]
+
+
+        y_fit_temp =fit_temp[:,2]
+        x_fit_temp =fit_temp[:,1]
+        y_data_temp =data_temp[2,:]
+        x_data_temp =data_temp[1,:]
+
+
+        if_display(
+            Plots.scatter(
+                x_data_temp,
+                log.(y_data_temp),
+                xlabel="Time",
+                ylabel="Log(Arb. Units)",
+                label=["Log Data " nothing],
+                markersize=1,
+                color=:black,
+                title=string(label_exp, " ", well_name),
+                guidefontsize=guidefontsize,
+                tickfontsize=tickfontsize,
+                legendfontsize=legendfontsize,
+                size=(y_size,x_size),
+    
+            ),
+        )
+    
+        if_display(
+            Plots.plot!(
+                x_fit_temp,
+                y_fit_temp,
+                ribbon=temp_ci,
+                xlabel="Time ",
+                ylabel="Log(Arb. Units)",
+                label=[string("Fitting Log-Lin ") nothing],
+                c=:red,
+                guidefontsize=guidefontsize,
+                tickfontsize=tickfontsize,
+                legendfontsize=legendfontsize,
+                size=(y_size,x_size),
+    
+            ),
+        )
+        if_display(
+            Plots.vline!(
+                [x_fit_temp[1], x_fit_temp[end]],
+                c=:black,
+                label=[string("Window of exp. phase ") nothing],
+                guidefontsize=guidefontsize,
+                tickfontsize=tickfontsize,
+                legendfontsize=legendfontsize,
+                size=(y_size,x_size),
+    
+            ),
+        )
+        if save_plots
+            png(string(path_to_plot, label_exp, "_Log_Lin_Fit_", well_name, ".png"))
+        end
+  
+        N0 = exp.(coeff_1)
+        Theoretical_fitting_exp = N0.* exp.(x_fit_temp .* coeff_2)
+    
+        if_display(
+            Plots.scatter(
+                x_data_temp,
+                y_data_temp,
+                xlabel="Time",
+                ylabel="Arb. Units",
+                label=["Data " nothing],
+                markersize=1,
+                color=:black,
+                title=string(label_exp, " ", well_name),
+                guidefontsize=guidefontsize,
+                tickfontsize=tickfontsize,
+                legendfontsize=legendfontsize,
+                size=(y_size,x_size),
+    
+            ),
+        )
+    
+        if_display(
+            Plots.plot!(
+                x_fit_temp,
+                Theoretical_fitting_exp,
+                xlabel="Time ",
+                ylabel="Arb. Units",
+                label=[string("Fitting Exp. ") nothing],
+                c=:red,
+                guidefontsize=guidefontsize,
+                tickfontsize=tickfontsize,
+                legendfontsize=legendfontsize,
+                size=(y_size,x_size),
+    
+            ),
+        )
+        if_display(
+            Plots.vline!(
+                [x_fit_temp[1], x_fit_temp[end]],
+                c=:black,
+                label=[string("Window of exp. phase ") nothing],
+                guidefontsize=guidefontsize,
+                tickfontsize=tickfontsize,
+                legendfontsize=legendfontsize,
+                size=(y_size,x_size),
+    
+            ),
+        )
+        if save_plots
+            png(string(path_to_plot, label_exp, "_exp_Fit_", well_name, ".png"))
+        end
+        data = Matrix(transpose(hcat(x_data_temp,y_data_temp)))
+
+
+
+        specific_gr = Kimchi.specific_gr_evaluation(data, pt_smoothing_derivative)
+    
+        specific_gr_times = [
+            (data[1, r] + data[1, (r+pt_smoothing_derivative)]) / 2 for
+            r = 1:1:(eachindex(data[2, :])[end].-pt_smoothing_derivative)
+        ]
+    
+        if_display(
+            Plots.scatter(
+                specific_gr_times,
+                specific_gr,
+                xlabel="Time ",
+                ylabel="1 /time ",
+                label=[string("Dynamics growth rate ") nothing],
+                c=:red,
+                title=string(label_exp, " ", well_name),
+                guidefontsize=guidefontsize,
+                tickfontsize=tickfontsize,
+                legendfontsize=legendfontsize,
+                size=(y_size,x_size),
+    
+            ),
+        )
+        if_display(
+            Plots.vline!(
+                [x_fit_temp[1], x_fit_temp[end]],
+                c=:black,
+                label=[string("Window of exp. phase ") nothing],
+                   guidefontsize=guidefontsize,
+            tickfontsize=tickfontsize,
+            legendfontsize=legendfontsize,
+            size=(y_size,x_size),
+        ) )
+        if save_plots
+            png(string(path_to_plot, label_exp, "_specific_gr_dynamics_", well_name, ".png"))
+        end
+
+    end
 
 
     else    # plotting segmentation fits
@@ -344,7 +520,7 @@ function plot_fit_of_file(
                     y_fit_temp,
                     xlabel="Time",
                     ylabel="Arb. Units",
-                    label=[string("Fitting ", model_string) nothing],
+                    label=[string("Fitting ") nothing],
                     c=:red,
                     guidefontsize=guidefontsize,
                     tickfontsize=tickfontsize,
@@ -364,7 +540,7 @@ function plot_fit_of_file(
                 size=(y_size,x_size),
                 ) )
             if save_plots
-                png(string(path_to_plot, label_exp, "_", model_string, "_", well_name, ".png"))
+                png(string(path_to_plot, label_exp, "_segmented_fit_", well_name, ".png"))
             end
 
 
@@ -382,183 +558,3 @@ function plot_fit_of_file(
       
 end    
 
-
-function plot_log_lin(save_plots,
-    if_display,
-    data,
-    results_specific_well;
-    path_to_plot = "NA",
-    guidefontsize=18,
-    tickfontsize=12,
-    legendfontsize=10,
-    y_size = 300,
-    x_size = 300,
-    pt_smoothing_derivative = 7
-    )
-
-    well_name =   results_specific_well[2]
-    label_exp =   results_specific_well[1]
-
-
-    coeff_2 =  results_specific_well[7]
-    coeff_1 = results_specific_well[12]
-
-    index_of_t_start =  findfirst(data[1, :] .>=  results_specific_well[3])
-    index_of_t_end =  findfirst(data[1, :] .>= results_specific_well[4])
-
-    data_to_fit_times = data[1, index_of_t_start:index_of_t_end]
-    data_to_fit_values = log.(data[2, index_of_t_start:index_of_t_end])
-
-    N = length(data_to_fit_times)
-    M = [ones(N) data_to_fit_times]
-    mean_x = mean(data_to_fit_times)
-    sigma_a = sigma_b = r = zeros(N)
-    Theoretical_fitting = coeff_1 .+ data_to_fit_times .* coeff_2
-
-    Cantrell_errors = sqrt(sum((data_to_fit_values - coeff_2 * data_to_fit_times .- coeff_1) .^ 2) / (N - 2))  # goodness of fit
-    sigma_b = sqrt(1 / sum((data_to_fit_times .- mean_x) .^ 2))
-    sigma_a = Cantrell_errors * sqrt(1 / N + mean_x^2 * sigma_b^2)
-    sigma_b *= Cantrell_errors
-    # Pearson's correlation coefficient
-    d = TDist(N - 2)     # t-Student distribution with N-2 degrees of freedom
-    cf = quantile(d, 0.975)  # correction factor for 95% confidence intervals (two-tailed distribution)
-    confidence_band = cf * Cantrell_errors * sqrt.(1 / N .+ (data_to_fit_times .- mean(data_to_fit_times)) .^ 2 / var(data_to_fit_times) / (N - 1))
-
-    if_display(
-        Plots.scatter(
-            data[1, :],
-            log.(data[2, :]),
-            xlabel="Time",
-            ylabel="Log(Arb. Units)",
-            label=["Log Data " nothing],
-            markersize=1,
-            color=:black,
-            title=string(label_exp, " ", well_name),
-            guidefontsize=guidefontsize,
-            tickfontsize=tickfontsize,
-            legendfontsize=legendfontsize,
-            size=(y_size,x_size),
-
-        ),
-    )
-
-    if_display(
-        Plots.plot!(
-            data_to_fit_times,
-            Theoretical_fitting,
-            ribbon=confidence_band,
-            xlabel="Time ",
-            ylabel="Log(Arb. Units)",
-            label=[string("Fitting Log-Lin ") nothing],
-            c=:red,
-            guidefontsize=guidefontsize,
-            tickfontsize=tickfontsize,
-            legendfontsize=legendfontsize,
-            size=(y_size,x_size),
-
-        ),
-    )
-    if_display(
-        Plots.vline!(
-            [data_to_fit_times[1], data_to_fit_times[end]],
-            c=:black,
-            label=[string("Window of exp. phase ") nothing],
-            guidefontsize=guidefontsize,
-            tickfontsize=tickfontsize,
-            legendfontsize=legendfontsize,
-            size=(y_size,x_size),
-
-        ),
-    )
-    if save_plots
-        png(string(path_to_plot, label_exp, "_Log_Lin_Fit_", well_name, ".png"))
-    end
-    N0 = exp.(coeff_1)
-    Theoretical_fitting_exp = N0.* exp.(data_to_fit_times .* coeff_2)
-
-    if_display(
-        Plots.scatter(
-            data[1, :],
-            (data[2, :]),
-            xlabel="Time",
-            ylabel="Arb. Units",
-            label=["Data " nothing],
-            markersize=1,
-            color=:black,
-            title=string(label_exp, " ", well_name),
-            guidefontsize=guidefontsize,
-            tickfontsize=tickfontsize,
-            legendfontsize=legendfontsize,
-            size=(y_size,x_size),
-
-        ),
-    )
-
-    if_display(
-        Plots.plot!(
-            data_to_fit_times,
-            Theoretical_fitting_exp,
-            xlabel="Time ",
-            ylabel="Arb. Units",
-            label=[string("Fitting Exp. ") nothing],
-            c=:red,
-            guidefontsize=guidefontsize,
-            tickfontsize=tickfontsize,
-            legendfontsize=legendfontsize,
-            size=(y_size,x_size),
-
-        ),
-    )
-    if_display(
-        Plots.vline!(
-            [data_to_fit_times[1], data_to_fit_times[end]],
-            c=:black,
-            label=[string("Window of exp. phase ") nothing],
-            guidefontsize=guidefontsize,
-            tickfontsize=tickfontsize,
-            legendfontsize=legendfontsize,
-            size=(y_size,x_size),
-
-        ),
-    )
-    if save_plots
-        png(string(path_to_plot, label_exp, "_exp_Fit_", well_name, ".png"))
-    end
-
-    specific_gr = Kimchi.specific_gr_evaluation(data, pt_smoothing_derivative)
-
-    specific_gr_times = [
-        (data[1, r] + data[1, (r+pt_smoothing_derivative)]) / 2 for
-        r = 1:1:(eachindex(data[2, :])[end].-pt_smoothing_derivative)
-    ]
-
-    if_display(
-        Plots.scatter(
-            specific_gr_times,
-            specific_gr,
-            xlabel="Time ",
-            ylabel="1 /time ",
-            label=[string("Dynamics growth rate ") nothing],
-            c=:red,
-            guidefontsize=guidefontsize,
-            tickfontsize=tickfontsize,
-            legendfontsize=legendfontsize,
-            size=(y_size,x_size),
-
-        ),
-    )
-    if_display(
-        Plots.vline!(
-            [data_to_fit_times[1], data_to_fit_times[end]],
-            c=:black,
-            label=[string("Window of exp. phase ") nothing],
-               guidefontsize=guidefontsize,
-        tickfontsize=tickfontsize,
-        legendfontsize=legendfontsize,
-        size=(y_size,x_size),
-    ) )
-    if save_plots
-        png(string(path_to_plot, label_exp, "_specific_gr_dynamics_", well_name, ".png"))
-    end
-
-end
