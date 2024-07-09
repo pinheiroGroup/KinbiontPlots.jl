@@ -71,6 +71,10 @@ function plot_data(
     tickfontsize=16,
     legendfontsize=10
     )
+        # creating the folder of data if one wants to save
+        if save_plots == true
+            mkpath(path_to_plot)
+        end
   
     names_of_annotated_df,properties_of_annotation,list_of_blank, list_of_discarded = reading_annotation(path_to_annotation)
     # reading files
@@ -112,10 +116,7 @@ function plot_data(
 
 
     end
-    # creating the folder of data if one wants to save
-    if save_plots == true
-        mkpath(path_to_plot)
-    end
+
 
     for well_name in names_of_cols[2:end]
         well_name = string(well_name)
@@ -227,7 +228,10 @@ function plot_fit_of_file(
         tickfontsize=16,
         legendfontsize=10,
         )
-      
+          # creating the folder of data if one wants to save
+    if save_plots == true
+        mkpath(path_to_plot)
+    end
     # plotting standard fits
     if length(Kimchi_results) == 4
         Kimchi_results_matrix = Kimchi_results[2]
@@ -557,4 +561,3 @@ function plot_fit_of_file(
     
       
 end    
-
