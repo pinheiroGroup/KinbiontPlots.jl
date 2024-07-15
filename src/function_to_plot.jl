@@ -71,10 +71,6 @@ function plot_data(
     tickfontsize=16,
     legendfontsize=10
     )
-        # creating the folder of data if one wants to save
-        if save_plots == true
-            mkpath(path_to_plot)
-        end
   
     names_of_annotated_df,properties_of_annotation,list_of_blank, list_of_discarded = reading_annotation(path_to_annotation)
     # reading files
@@ -116,7 +112,10 @@ function plot_data(
 
 
     end
-
+    # creating the folder of data if one wants to save
+    if save_plots == true
+        mkpath(path_to_plot)
+    end
 
     for well_name in names_of_cols[2:end]
         well_name = string(well_name)
@@ -228,10 +227,7 @@ function plot_fit_of_file(
         tickfontsize=16,
         legendfontsize=10,
         )
-          # creating the folder of data if one wants to save
-    if save_plots == true
-        mkpath(path_to_plot)
-    end
+      
     # plotting standard fits
     if length(Kimchi_results) == 4
         Kimchi_results_matrix = Kimchi_results[2]
@@ -479,6 +475,7 @@ function plot_fit_of_file(
         Kimchi_fits = Kimchi_results[3]
         Kimchi_data = Kimchi_results[4]
         Kimchi_cp_intervals = Kimchi_results[5]
+        well_names = unique(Kimchi_results_matrix[2,2:end])
 
 
 
@@ -489,6 +486,9 @@ function plot_fit_of_file(
         end
 
       for i in eachindex(Kimchi_fits)
+
+
+
           fit_temp =Kimchi_fits[i]
           data_temp =Kimchi_data[i]
           temp_cp = Kimchi_cp_intervals[i]
@@ -496,10 +496,10 @@ function plot_fit_of_file(
           x_fit_temp =fit_temp[:,1]
           y_data_temp =data_temp[2,:]
           x_data_temp =data_temp[1,:]
-          model_string = Kimchi_results_matrix[3,i+1]
-          well_name = Kimchi_results_matrix[2,i+1]
+          well_name = well_names[i]
           label_exp = Kimchi_results_matrix[1,i+1]
-
+          println(i)
+          println(well_name)
           if_display(
             Plots.scatter(
                 x_data_temp,
@@ -516,7 +516,6 @@ function plot_fit_of_file(
                 size=(y_size,x_size),
             ),
             )
-            println(temp_cp)
    
             if_display(
                 Plots.plot!(
@@ -561,3 +560,4 @@ function plot_fit_of_file(
     
       
 end    
+
