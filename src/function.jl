@@ -4,10 +4,6 @@ using Plots
 using Kinbiont
 
 #plot a file
-
-
-
-
 """
 
     plot_data(
