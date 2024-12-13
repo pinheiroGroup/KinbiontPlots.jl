@@ -11,5 +11,5 @@ Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 [compat]
 julia = "1.10"
 CSV ="0.10.14"
-Kinbiont = "1.0.10"
+Kinbiont = "1.40.0"
 
