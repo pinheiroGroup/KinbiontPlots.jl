@@ -74,7 +74,7 @@ function plot_data(
         if save_plots == true
             mkpath(path_to_plot)
         end
-  
+     count = 0
     names_of_annotated_df,properties_of_annotation,list_of_blank, list_of_discarded = reading_annotation(path_to_annotation)
     # reading files
     dfs_data = CSV.File(path_to_data)
@@ -118,6 +118,7 @@ function plot_data(
 
 
     for well_name in names_of_cols[2:end]
+        count = count + 1
         well_name = string(well_name)
 
         if avg_replicate == true
@@ -145,7 +146,7 @@ function plot_data(
         end
 
         if overlay_plots
-            if well_name == names_of_cols[2]
+            if count == 1
                 if_display(
                     Plots.plot(
                         data[1, :],
